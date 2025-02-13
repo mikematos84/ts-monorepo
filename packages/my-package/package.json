@@ -1,0 +1,52 @@
+{
+  "name": "my-package",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/cjs/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rollup -c"
+  },
+  "keywords": [],
+  "author": "Mike Matos",
+  "license": "ISC",
+  "module": "dist/esm/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "directories": {
+    "doc": "docs"
+  },
+  "bugs": {
+    "url": "git+https://github.com/mikematos84/ts-monorepo/issues"
+  },
+  "homepage": "git+https://github.com/mikematos84/ts-monorepo/#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mikematos84/ts-monorepo",
+    "directory": "packages/my-package"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "@rollup/plugin-commonjs": "^28.0.2",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "eslint": "^9.20.1",
+    "eslint-plugin-react": "^7.37.4",
+    "globals": "^15.15.0",
+    "rollup": "^4.34.6",
+    "rollup-plugin-peer-deps-external": "^2.2.4",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.24.0"
+  }
+}

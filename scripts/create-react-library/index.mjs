@@ -13,7 +13,17 @@ import { generateGitUrl } from "../utils/generateGitUrl.mjs";
 import { validatePackageName } from "../utils/validatePackageName.mjs";
 import { spawnSync } from "../utils/spawnSync.mjs";
 
-const __dirname = path.resolve(path.dirname(""));
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const ROOT_PATH = path.join(__dirname, "../../");
+const SCRIPT_PATH = __dirname;
+const TEMPLATE_PATH = path.join(SCRIPT_PATH, "template");
+
+let PACKAGE_PATH = null;
 
 // Define command-line options
 program
@@ -56,7 +66,8 @@ if (!inputs.typescript) {
     ? options.packageName.split("/")
     : [null, options.packageName];
 
-  const packagePath = path.join(__dirname, "packages", packageName);
+  PACKAGE_PATH = path.join(ROOT_PATH, "packages", packageName);
+  const packagePath = path.join(ROOT_PATH, "packages", packageName);
 
   // cleanup the package folder if it already exists
   if (existsSync(packagePath)) {
@@ -75,19 +86,47 @@ if (!inputs.typescript) {
   // install react and react-dom
   await spawnSync("npm i react react-dom");
   // if using typescript
-  if (inputs.typescript) {
+  if (options.typescript) {
     // install typescript and types for react and react-dom
     await spawnSync("npm i -D typescript @types/react @types/react-dom");
     // Write a tsconfig.json file with the necessary configuration for a React library
     await createTsConfig();
   }
-  // create a src folder with an index.ts in it
-  await fs.mkdir("src");
-  await fs.writeFile("src/index.ts", "");
 
   // create a rollup.config.js file with the necessary configuration
   await createRollupConfig();
+
+  // copy src from the template folder to the package folder
+  await spawnSync(`cp -r ${path.join(TEMPLATE_PATH, "src")} ./src`);
+
+  // run build command
+  await spawnSync("npm run build");
+
+  // setup eslint
+  await setupEslint(options);
 })();
+
+async function setupEslint(options) {
+  const { typescript } = options;
+
+  const deps = [
+    "eslint",
+    "globals",
+    "@eslint/js",
+    "eslint-plugin-react",
+    ...(typescript ? ["typescript-eslint"] : []),
+  ];
+
+  await spawnSync(`npm i -D ${deps.join(" ")}`);
+
+  // copy eslint config from template folder to the package folder
+  await spawnSync(
+    `cp ${path.join(
+      SCRIPT_PATH,
+      `template/eslint.config${typescript ? ".typescript" : ""}.mjs`
+    )} ./eslint.config.mjs`
+  );
+}
 
 // Modifies the package.json file to include the main, module, and types fields
 async function updatePackageJson(options, packagePath) {
@@ -126,11 +165,17 @@ async function updatePackageJson(options, packagePath) {
 }
 
 // create a function to setup rollup to bundle the library
-async function createRollupConfig(packagePath) {
+async function createRollupConfig(packagePath = ".") {
   // install the necessary dependencies
-  await spawnSync(
-    "npm i -D rollup rollup-plugin-typescript2 @rollup/plugin-commonjs @rollup/plugin-node-resolve rollup-plugin-peer-deps-external"
-  );
+  const deps = [
+    "rollup",
+    "rollup-plugin-typescript2",
+    "@rollup/plugin-commonjs",
+    "@rollup/plugin-node-resolve",
+    "rollup-plugin-peer-deps-external",
+  ];
+
+  await spawnSync(`npm i -D ${deps.join(" ")}`);
 
   const content = formatTemplateLiteral`
       import typescript from "rollup-plugin-typescript2";
@@ -167,7 +212,9 @@ async function createRollupConfig(packagePath) {
     },
   });
 
-  return fs.writeFile("rollup.config.mjs", content, { encoding: "utf-8" });
+  return fs.writeFile(path.join(packagePath, "rollup.config.mjs"), content, {
+    encoding: "utf-8",
+  });
 }
 
 async function modifyPackageJson(path, options) {
@@ -199,8 +246,14 @@ async function createTsConfig() {
       isolatedModules: true, // Ensure each file can be safely transpiled without relying on other imports
       // Do not emit outputs
     },
-    include: ["src/**/*.{ts,tsx,js,jsx}"], // Specify which files to include
-    exclude: ["node_modules", "**/*.spec.ts", "**/*.spec.tsx"], // Specify which files to exclude
+    include: ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "src/**/*.jsx"], // Specify which files to include
+    exclude: [
+      "node_modules",
+      "**/*.spec.ts",
+      "**/*.spec.tsx",
+      "**/*.spec.js",
+      "**/*.spec.jsx",
+    ], // Specify which files to exclude
   };
 
   return fs.writeFile("tsconfig.json", JSON.stringify(tsconfig, null, 2));
