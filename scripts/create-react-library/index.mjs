@@ -25,6 +25,8 @@ const TEMPLATE_PATH = path.join(SCRIPT_PATH, "template");
 
 let PACKAGE_PATH = null;
 
+let depsToInstall = [];
+
 // Define command-line options
 program
   .option("-n, --package-name <string>", "Package name")
@@ -84,7 +86,8 @@ if (!inputs.typescript) {
   await updatePackageJson(options, packagePath);
 
   // install react and react-dom
-  await spawnSync("npm i react react-dom");
+  await spawnSync("npm i react react-dom --save-peer");
+
   // if using typescript
   if (options.typescript) {
     // install typescript and types for react and react-dom
@@ -99,12 +102,88 @@ if (!inputs.typescript) {
   // copy src from the template folder to the package folder
   await spawnSync(`cp -r ${path.join(TEMPLATE_PATH, "src")} ./src`);
 
-  // run build command
-  await spawnSync("npm run build");
-
   // setup eslint
   await setupEslint(options);
+
+  // setup jest
+  await setupJest(options);
+
+  // run eslint
+  await spawnSync("npm run lint");
+  // run tests
+  await spawnSync("npm test");
+  // run build command
+  await spawnSync("npm run build");
 })();
+
+async function setupJest(options) {
+  const { typescript } = options;
+
+  const deps = [
+    "jest",
+    "react-test-renderer",
+    "jest-environment-jsdom",
+    "jest-watch-typeahead",
+    "@testing-library/jest-dom",
+    ...(typescript ? ["ts-jest"] : []),
+  ];
+
+  depsToInstall.push(deps.map((dep) => ({ name: dep, type: "dev" })));
+
+  await spawnSync(`npm i -D ${deps.join(" ")}`);
+
+  await fs.writeFile(
+    ".config/setup-jest.js",
+    formatTemplateLiteral`
+      import "@testing-library/jest-dom";
+    `,
+    { encoding: "utf-8" }
+  );
+
+  const jestConfig = formatTemplateLiteral`
+    module.exports = async () => {
+      return {
+        preset: ${typescript ? '"ts-jest"' : "undefined"},
+        testEnvironment: "jsdom",
+        setupFilesAfterEnv: ["<rootDir>/.config/setup-jest.js"],
+        testPathIgnorePatterns: ["/node_modules/", "/dist/"],
+        moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
+      }
+    };
+  `;
+  await fs.writeFile("jest.config.js", jestConfig, { encoding: "utf-8" });
+
+  modifyPackageJson(path.join(PACKAGE_PATH, "package.json"), {
+    scripts: {
+      test: "jest",
+    },
+  });
+
+  await spawnSync(
+    `npm i -D @testing-library/react @testing-library/jest-dom @types/jest`
+  );
+
+  // write a sample test file for src/components/SampleComponent that just makes sure it renders without crashing
+  const testContent = formatTemplateLiteral`
+    import React from "react";
+    import { render, screen } from "@testing-library/react";
+    import SampleComponent from ".";
+
+    test("renders SampleComponent", () => {
+      render(<SampleComponent />);
+      const element = screen.getByText(/SampleComponent/i);
+      expect(element).toBeInTheDocument();
+    });
+  `;
+  await fs.writeFile(
+    path.join(
+      PACKAGE_PATH,
+      "src/components/SampleComponent/SampleComponent.test.tsx"
+    ),
+    testContent,
+    { encoding: "utf-8" }
+  );
+}
 
 async function setupEslint(options) {
   const { typescript } = options;
@@ -126,6 +205,12 @@ async function setupEslint(options) {
       `template/eslint.config${typescript ? ".typescript" : ""}.mjs`
     )} ./eslint.config.mjs`
   );
+
+  modifyPackageJson(path.join(PACKAGE_PATH, "package.json"), {
+    scripts: {
+      lint: "eslint src --fix",
+    },
+  });
 }
 
 // Modifies the package.json file to include the main, module, and types fields
@@ -183,8 +268,10 @@ async function createRollupConfig(packagePath = ".") {
       import resolve from "@rollup/plugin-node-resolve";
       import peerDepsExternal from "rollup-plugin-peer-deps-external";
 
+      /** @type {import('rollup').RollupOptions} */
       export default {
         input: "src/index.ts",
+        external: ["react", "react-dom"],
         output: [
           {
             dir: "dist/cjs",
