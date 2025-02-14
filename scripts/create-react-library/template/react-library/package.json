@@ -1,5 +1,5 @@
 {
-  "name": "react-library",
+  "name": "mikematos84/ts-react-library",
   "version": "1.0.0",
   "description": "Auto generated react library",
   "main": "dist/cjs/index.js",
@@ -7,8 +7,8 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "dev": "rollup -c -w",
-    "clean": "rm -rf dist dts",
-    "build": "npm run clean && rollup -c",
+    "clean": "rm -rf dist coverage node_modules storybook-static",
+    "build": "rm -rf dist && rollup -c",
     "test": "jest",
     "lint": "eslint src --fix",
     "storybook": "storybook dev -p 6006",
@@ -30,7 +30,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mikematos84/ts-monorepo",
-    "directory": "packages/react-library"
+    "directory": "packages/ts-react-library"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
