@@ -119,25 +119,15 @@ if (!inputs.typescript) {
 async function setupJest(options) {
   const { typescript } = options;
 
-  const deps = [
-    "jest",
-    "react-test-renderer",
-    "jest-environment-jsdom",
-    "jest-watch-typeahead",
-    "@testing-library/jest-dom",
-    ...(typescript ? ["ts-jest"] : []),
-  ];
+  const jestSetup = formatTemplateLiteral`
+    import "@testing-library/jest-dom/extend-expect";
+  `;
 
-  depsToInstall.push(deps.map((dep) => ({ name: dep, type: "dev" })));
-
-  await spawnSync(`npm i -D ${deps.join(" ")}`);
-
+  await fs.mkdir(path.join(PACKAGE_PATH, ".config"), { recursive: true });
   await fs.writeFile(
-    ".config/setup-jest.js",
-    formatTemplateLiteral`
-      import "@testing-library/jest-dom";
-    `,
-    { encoding: "utf-8" }
+    path.join(PACKAGE_PATH, ".config/setup-jest.js"),
+    jestSetup,
+    "utf-8"
   );
 
   const jestConfig = formatTemplateLiteral`
@@ -151,7 +141,7 @@ async function setupJest(options) {
       }
     };
   `;
-  await fs.writeFile("jest.config.js", jestConfig, { encoding: "utf-8" });
+  await fs.writeFile("jest.config.js", jestConfig, "utf-8");
 
   modifyPackageJson(path.join(PACKAGE_PATH, "package.json"), {
     scripts: {
@@ -159,30 +149,37 @@ async function setupJest(options) {
     },
   });
 
-  await spawnSync(
-    `npm i -D @testing-library/react @testing-library/jest-dom @types/jest`
-  );
-
-  // write a sample test file for src/components/SampleComponent that just makes sure it renders without crashing
+  // write a sample test file for src/components/HelloWord that just makes sure it renders without crashing
   const testContent = formatTemplateLiteral`
     import React from "react";
     import { render, screen } from "@testing-library/react";
-    import SampleComponent from ".";
+    import HelloWord from ".";
 
-    test("renders SampleComponent", () => {
-      render(<SampleComponent />);
-      const element = screen.getByText(/SampleComponent/i);
+    test("renders HelloWord", () => {
+      render(<HelloWord />);
+      const element = screen.getByText(/HelloWord/i);
       expect(element).toBeInTheDocument();
     });
   `;
   await fs.writeFile(
-    path.join(
-      PACKAGE_PATH,
-      "src/components/SampleComponent/SampleComponent.test.tsx"
-    ),
+    path.join(PACKAGE_PATH, "src/components/HelloWord/HelloWord.test.tsx"),
     testContent,
-    { encoding: "utf-8" }
+    "utf-8"
   );
+
+  const deps = [
+    "jest",
+    "react-test-renderer",
+    "jest-environment-jsdom",
+    "jest-watch-typeahead",
+    "@testing-library/jest-dom",
+    "@testing-library/react",
+    ...(typescript ? ["ts-jest", "@types/jest"] : []),
+  ];
+
+  depsToInstall.push(deps.map((dep) => ({ name: dep, type: "dev" })));
+
+  await spawnSync(`npm i -D ${deps.join(" ")}`);
 }
 
 async function setupEslint(options) {

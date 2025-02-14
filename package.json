@@ -14,12 +14,11 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "colors": "^1.4.0",
     "commander": "^13.1.0",
     "deepmerge": "^4.3.1",
+    "fast-glob": "^3.3.3",
+    "fs-extra": "^11.3.0",
     "prompts": "^2.4.2"
-  },
-  "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
   }
 }
