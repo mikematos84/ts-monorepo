@@ -1,36 +1,28 @@
 import prompts from "prompts";
 import { program } from "commander";
-import fs from "fs/promises";
 import path from "path";
-import { existsSync } from "fs";
-import merge from "deepmerge";
-
-// helpers
-import { formatTemplateLiteral } from "../utils/formatTemplateLiteral.mjs";
-import { getPackageName } from "../utils/getPackageName.mjs";
-import { getPackageJson } from "../utils/getPackageJson.mjs";
-import { generateGitUrl } from "../utils/generateGitUrl.mjs";
-import { validatePackageName } from "../utils/validatePackageName.mjs";
-import { spawnSync } from "../utils/spawnSync.mjs";
+import { spawn, spawnSync } from "child_process";
+import colors from "colors";
+import fs from "fs-extra";
+import fg from "fast-glob";
 
 import { dirname } from "path";
 import { fileURLToPath } from "url";
+import { ChildProcess } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const ROOT_PATH = path.join(__dirname, "../../");
 const SCRIPT_PATH = __dirname;
-const TEMPLATE_PATH = path.join(SCRIPT_PATH, "template");
+const TEMPLATES_PATH = path.join(SCRIPT_PATH, "templates");
 
 let PACKAGE_PATH = null;
 
-let depsToInstall = [];
-
 // Define command-line options
 program
-  .option("-n, --package-name <string>", "Package name")
-  .option("-t, --typescript [boolean]", "Use typescript?");
+  .option("-n, --package-name <string>", "What is the name of the package?")
+  .option("-t, --typescript [boolean]", "Do you want to use TypeScript?");
 
 program.parse(process.argv);
 
@@ -44,7 +36,12 @@ if (!inputs.packageName) {
     type: "text",
     name: "packageName",
     message: "What is the name of the package?",
-    validate: validatePackageName,
+    validate: (value) => {
+      if (!value.match(/^(?:@[a-z0-9-]+\/)?[a-z0-9-]+$/)) {
+        return "Package name must be all lowercase and contain only letters, numbers, and dashes. Scoped packages must start with @ followed by the scope name.";
+      }
+      return true;
+    },
     initial: "my-package",
   });
 }
@@ -59,286 +56,220 @@ if (!inputs.typescript) {
   });
 }
 
+const response = await prompts(questions);
+
+// Merge the command-line options with the prompt responses
+const options = { ...inputs, ...response };
+const [scope, packageName] = options.packageName.includes("/")
+  ? options.packageName.split("/")
+  : [null, options.packageName];
+
+PACKAGE_PATH = path.join(ROOT_PATH, "packages", packageName);
+const packagePath = path.join(ROOT_PATH, "packages", packageName);
+
+async function cleanupTemplateFolder() {
+  console.info(colors.yellow("Template folder cleaned up."));
+  const files = await fg.sync(
+    ["node_modules", "dist", "build", "out", "storybook-static", "coverage"],
+    {
+      cwd: path.join(TEMPLATES_PATH, "ts-react-library"),
+      absolute: true,
+      onlyDirectories: true,
+    }
+  );
+  for (const file of files) {
+    await fs.remove(file);
+  }
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
+async function updatePackageNameReferences() {
+  console.info(colors.blue(`Package ${packageName} created successfully.`));
+  process.stdout.write(colors.yellow("Updating package name references..."));
+  const files = await fg.sync(`**/*`, { cwd: PACKAGE_PATH, absolute: true });
+
+  for (const file of files) {
+    let content = await fs.readFile(file, "utf8");
+    content = content.replace(/ts-react-library/g, packageName);
+    await fs.writeFile(file, content, "utf8");
+  }
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
+async function updateImportStatements() {
+  process.stdout.write(colors.yellow("Updating import statements..."));
+  const files = await fg.sync(`**/*.{ts,tsx}`, {
+    cwd: PACKAGE_PATH,
+    absolute: true,
+  });
+  for (const file of files) {
+    let content = await fs.readFile(file, "utf8");
+    content = content.replace(/\.tsx?(['"])/g, ".js$1");
+    await fs.writeFile(file, content, "utf8");
+  }
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
+async function changeFileExtensions() {
+  process.stdout.write(colors.yellow("Changing file extensions..."));
+  const files = await fg.sync(`**/*.{ts,tsx}`, {
+    cwd: PACKAGE_PATH,
+    absolute: true,
+    dot: true,
+  });
+  for (const file of files) {
+    const newFile = file.replace(/\.(ts|tsx)$/, ".js");
+    await fs.rename(file, newFile);
+  }
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
+async function updatePackageJson() {
+  process.stdout.write(colors.yellow("Updating package.json..."));
+  const packageJsonPath = path.join(PACKAGE_PATH, "package.json");
+  const packageJson = await fs.readJson(packageJsonPath);
+  const devDeps = [
+    "ts-jest",
+    "typescript",
+    "typescript-eslint",
+    "@types/jest",
+    "@types/react",
+    "@types/react-dom",
+    "@rollup/plugin-typescript",
+    "rollup-plugin-dts",
+  ];
+  for (const dep of devDeps) {
+    delete packageJson.devDependencies[dep];
+  }
+  await fs.writeJson(packageJsonPath, packageJson, { spaces: 2 });
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
+async function updateJestConfig() {
+  process.stdout.write(colors.yellow("Updating Jest config..."));
+  const jestConfigPath = path.join(PACKAGE_PATH, "jest.config.mjs");
+  let content = await fs.readFile(jestConfigPath, "utf8");
+  content = content.replace(/ts-jest/g, "jest");
+  await fs.writeFile(jestConfigPath, content, "utf8");
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
+async function updateEslintConfig() {
+  process.stdout.write(colors.yellow("Updating ESLint config..."));
+  const eslintConfigPath = path.join(PACKAGE_PATH, "eslint.config.mjs");
+  let content = await fs.readFile(eslintConfigPath, "utf8");
+  content = content.replace(/import tseslint from "typescript-eslint";\n/g, "");
+  content = content.replace(/...tseslint.configs.recommended,\n/g, "");
+  await fs.writeFile(eslintConfigPath, content, "utf8");
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
+async function updateSwcConfig() {
+  process.stdout.write(colors.yellow("Updating SWC config..."));
+  const swcConfigPath = path.join(PACKAGE_PATH, ".swcrc");
+  let config = await fs.readJson(swcConfigPath);
+  config.jsc.parser.syntax = "ecmascript";
+  config.jsc.parser.jsx = true;
+  delete config.jsc.parser.tsx;
+  await fs.writeJson(swcConfigPath, config, { spaces: 2 });
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
+async function updateStorybookConfig() {
+  process.stdout.write(colors.yellow("Updating Storybook config..."));
+  const storybookConfigPath = path.join(PACKAGE_PATH, ".storybook/main.js");
+  let content = await fs.readFile(storybookConfigPath, "utf8");
+  content = content.replace(
+    /config.module.rules = config.module.rules.filter\(\(rule\) => !rule.test\?.toString\(\).includes\("tsx"\)\);\n/g,
+    ""
+  );
+
+  content = content.replace(
+    /config.module.rules.push\({\n\s+test: \/\.\(js\|mjs\|jsx\|ts\|tsx\)\$\/,\n\s+exclude: \/node_modules\/,\n\s+use: {\n\s+loader: getAbsolutePath\("swc-loader"\),\n\s+options: {\n\s+jsc: swcrc.jsc,\n\s+},\n\s+},\n\s+}\);\n/g,
+    ""
+  );
+
+  content = content.replace(
+    /import type { StorybookConfig } from "@storybook\/react-webpack5";\n/g,
+    ""
+  );
+
+  content = content.replace(
+    /function getAbsolutePath\(value: string\): any {/g,
+    "function getAbsolutePath(value) {"
+  );
+
+  content = content.replace(
+    /const config: StorybookConfig = {/g,
+    "const config = {"
+  );
+
+  await fs.writeFile(storybookConfigPath, content, "utf8");
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
+async function updateStorybookPreview() {
+  process.stdout.write(colors.yellow("Updating Storybook preview..."));
+  const storybookPreviewPath = path.join(PACKAGE_PATH, ".storybook/preview.js");
+  let content = await fs.readFile(storybookPreviewPath, "utf8");
+  content = content.replace(
+    /import type { Preview } from "@storybook\/react";\n/g,
+    ""
+  );
+  content = content.replace(/const preview: Preview = {/g, "const preview = {");
+  await fs.writeFile(storybookPreviewPath, content, "utf8");
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
+async function installDependencies() {
+  console.info(colors.yellow("Installing dependencies..."));
+  spawnSync("npm", ["i"], {
+    stdio: "inherit",
+    shell: true,
+    cwd: PACKAGE_PATH,
+  });
+}
+
+async function updateRollupConfig() {
+  process.stdout.write(colors.yellow("Updating Rollup config..."));
+  const rollupConfigPath = path.join(PACKAGE_PATH, "rollup.config.mjs");
+  let content = await fs.readFile(rollupConfigPath, "utf8");
+  content = content.replace(/\.ts(['"])/g, ".js$1");
+  content = content.replace(
+    /import typescript from "@rollup\/plugin-typescript";\n/g,
+    ""
+  );
+  content = content.replace(/import dts from "rollup-plugin-dts";\n/g, "");
+
+  content = content.replace(/typescript\(\{[\s\S]*?\}\),?\n?/gm, "");
+
+  await fs.writeFile(rollupConfigPath, content, "utf8");
+  await spawnSync("npx", ["prettier", "--write", rollupConfigPath], {
+    stdio: "inherit",
+  });
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
 (async () => {
-  const response = await prompts(questions);
+  if (await fs.pathExists(PACKAGE_PATH)) await fs.remove(PACKAGE_PATH);
 
-  // Merge the command-line options with the prompt responses
-  const options = { ...inputs, ...response };
-  const [scope, packageName] = options.packageName.includes("/")
-    ? options.packageName.split("/")
-    : [null, options.packageName];
+  await cleanupTemplateFolder();
 
-  PACKAGE_PATH = path.join(ROOT_PATH, "packages", packageName);
-  const packagePath = path.join(ROOT_PATH, "packages", packageName);
+  await fs.copy(path.join(TEMPLATES_PATH, "ts-react-library"), PACKAGE_PATH);
 
-  // cleanup the package folder if it already exists
-  if (existsSync(packagePath)) {
-    await fs.rm(packagePath, { recursive: true });
+  await updatePackageNameReferences();
+
+  if (!options.typescript) {
+    await updateImportStatements();
+    await changeFileExtensions();
+    await updatePackageJson();
+    await updateJestConfig();
+    await updateEslintConfig();
+    await updateSwcConfig();
+    await updateStorybookConfig();
+    await updateStorybookPreview();
+    await updateRollupConfig();
   }
 
-  // create a folder with the package name under packages using fs
-  await fs.mkdir(packagePath);
-  // navigate to the package folder
-  process.chdir(packagePath);
-  // initialize a new npm package with npm init -y
-  await spawnSync(`npm init -y ${scope ? `--scope=${scope}` : ""}`);
-  // update the package.json for npm
-  await updatePackageJson(options, packagePath);
-
-  // install react and react-dom
-  await spawnSync("npm i react react-dom --save-peer");
-
-  // if using typescript
-  if (options.typescript) {
-    // install typescript and types for react and react-dom
-    await spawnSync("npm i -D typescript @types/react @types/react-dom");
-    // Write a tsconfig.json file with the necessary configuration for a React library
-    await createTsConfig();
-  }
-
-  // create a rollup.config.js file with the necessary configuration
-  await createRollupConfig();
-
-  // copy src from the template folder to the package folder
-  await spawnSync(`cp -r ${path.join(TEMPLATE_PATH, "src")} ./src`);
-
-  // setup eslint
-  await setupEslint(options);
-
-  // setup jest
-  await setupJest(options);
-
-  // run eslint
-  await spawnSync("npm run lint");
-  // run tests
-  await spawnSync("npm test");
-  // run build command
-  await spawnSync("npm run build");
+  // await installDependencies();
 })();
-
-async function setupJest(options) {
-  const { typescript } = options;
-
-  const jestSetup = formatTemplateLiteral`
-    import "@testing-library/jest-dom/extend-expect";
-  `;
-
-  await fs.mkdir(path.join(PACKAGE_PATH, ".config"), { recursive: true });
-  await fs.writeFile(
-    path.join(PACKAGE_PATH, ".config/setup-jest.js"),
-    jestSetup,
-    "utf-8"
-  );
-
-  const jestConfig = formatTemplateLiteral`
-    module.exports = async () => {
-      return {
-        preset: ${typescript ? '"ts-jest"' : "undefined"},
-        testEnvironment: "jsdom",
-        setupFilesAfterEnv: ["<rootDir>/.config/setup-jest.js"],
-        testPathIgnorePatterns: ["/node_modules/", "/dist/"],
-        moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
-      }
-    };
-  `;
-  await fs.writeFile("jest.config.js", jestConfig, "utf-8");
-
-  modifyPackageJson(path.join(PACKAGE_PATH, "package.json"), {
-    scripts: {
-      test: "jest",
-    },
-  });
-
-  // write a sample test file for src/components/HelloWord that just makes sure it renders without crashing
-  const testContent = formatTemplateLiteral`
-    import React from "react";
-    import { render, screen } from "@testing-library/react";
-    import HelloWord from ".";
-
-    test("renders HelloWord", () => {
-      render(<HelloWord />);
-      const element = screen.getByText(/HelloWord/i);
-      expect(element).toBeInTheDocument();
-    });
-  `;
-  await fs.writeFile(
-    path.join(PACKAGE_PATH, "src/components/HelloWord/HelloWord.test.tsx"),
-    testContent,
-    "utf-8"
-  );
-
-  const deps = [
-    "jest",
-    "react-test-renderer",
-    "jest-environment-jsdom",
-    "jest-watch-typeahead",
-    "@testing-library/jest-dom",
-    "@testing-library/react",
-    ...(typescript ? ["ts-jest", "@types/jest"] : []),
-  ];
-
-  depsToInstall.push(deps.map((dep) => ({ name: dep, type: "dev" })));
-
-  await spawnSync(`npm i -D ${deps.join(" ")}`);
-}
-
-async function setupEslint(options) {
-  const { typescript } = options;
-
-  const deps = [
-    "eslint",
-    "globals",
-    "@eslint/js",
-    "eslint-plugin-react",
-    ...(typescript ? ["typescript-eslint"] : []),
-  ];
-
-  await spawnSync(`npm i -D ${deps.join(" ")}`);
-
-  // copy eslint config from template folder to the package folder
-  await spawnSync(
-    `cp ${path.join(
-      SCRIPT_PATH,
-      `template/eslint.config${typescript ? ".typescript" : ""}.mjs`
-    )} ./eslint.config.mjs`
-  );
-
-  modifyPackageJson(path.join(PACKAGE_PATH, "package.json"), {
-    scripts: {
-      lint: "eslint src --fix",
-    },
-  });
-}
-
-// Modifies the package.json file to include the main, module, and types fields
-async function updatePackageJson(options, packagePath) {
-  const rootPackageJson = await getPackageJson();
-
-  const originalPackageJson = await getPackageJson(packagePath);
-  const { name, version, description, main, ...rest } = originalPackageJson;
-
-  return modifyPackageJson(path.join(packagePath, "package.json"), {
-    name,
-    version,
-    description,
-    main: "dist/cjs/index.js",
-    module: "dist/esm/index.js",
-    ...(options.typescript && {
-      types: "dist/index.d.ts",
-    }),
-    files: ["dist"],
-    directories: {
-      doc: "docs",
-    },
-    bugs: {
-      url: generateGitUrl(rootPackageJson, "issues"),
-    },
-    homepage: generateGitUrl(rootPackageJson, `#readme`),
-    repository: {
-      type: "git",
-      url: generateGitUrl(rootPackageJson),
-      directory: `packages/${getPackageName(originalPackageJson)}`,
-    },
-    publishConfig: {
-      registry: "https://npm.pkg.github.com/",
-    },
-    ...rest,
-  });
-}
-
-// create a function to setup rollup to bundle the library
-async function createRollupConfig(packagePath = ".") {
-  // install the necessary dependencies
-  const deps = [
-    "rollup",
-    "rollup-plugin-typescript2",
-    "@rollup/plugin-commonjs",
-    "@rollup/plugin-node-resolve",
-    "rollup-plugin-peer-deps-external",
-  ];
-
-  await spawnSync(`npm i -D ${deps.join(" ")}`);
-
-  const content = formatTemplateLiteral`
-      import typescript from "rollup-plugin-typescript2";
-      import commonjs from "@rollup/plugin-commonjs";
-      import resolve from "@rollup/plugin-node-resolve";
-      import peerDepsExternal from "rollup-plugin-peer-deps-external";
-
-      /** @type {import('rollup').RollupOptions} */
-      export default {
-        input: "src/index.ts",
-        external: ["react", "react-dom"],
-        output: [
-          {
-            dir: "dist/cjs",
-            format: "cjs",
-            exports: "named",
-          },
-          {
-            dir: "dist/esm",
-            format: "esm",
-            preserveModules: true,
-          },
-        ],
-        plugins: [
-          peerDepsExternal(),
-          resolve(),
-          commonjs(),
-          typescript({ useTsconfigDeclarationDir: true }),
-        ],
-      };
-  `;
-
-  await modifyPackageJson(path.join(packagePath, "package.json"), {
-    scripts: {
-      build: "rollup -c",
-    },
-  });
-
-  return fs.writeFile(path.join(packagePath, "rollup.config.mjs"), content, {
-    encoding: "utf-8",
-  });
-}
-
-async function modifyPackageJson(path, options) {
-  // read package json  file
-  const packageJson = JSON.parse((await fs.readFile(path, "utf-8")) || {});
-  // update package json file
-  const next = merge(packageJson, options);
-  // write package json file
-  return fs.writeFile(path, JSON.stringify(next, null, 2), "utf-8");
-}
-
-async function createTsConfig() {
-  const tsconfig = {
-    compilerOptions: {
-      target: "es5", // Specify ECMAScript target version
-      module: "esnext", // Specify module code generation
-      jsx: "react-jsx", // Specify JSX code generation
-      moduleResolution: "node", // Specify module resolution strategy
-      strict: true, // Enable all strict type-checking options
-      esModuleInterop: true, // Enable interoperability between CommonJS and ES Modules
-      skipLibCheck: true, // Skip type checking of declaration files
-      forceConsistentCasingInFileNames: true, // Disallow inconsistently-cased references to the same file
-      lib: ["dom", "esnext"], // Specify library files to be included in the compilation
-      types: ["react", "react-dom"], // Specify type definitions to be included
-      allowJs: true, // Allow JavaScript files to be compiled
-      declaration: true, // Generate .d.ts files
-      outDir: "dist", // Redirect output structure to the directory
-      rootDir: "src", // Specify the root directory of input files
-      isolatedModules: true, // Ensure each file can be safely transpiled without relying on other imports
-      // Do not emit outputs
-    },
-    include: ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "src/**/*.jsx"], // Specify which files to include
-    exclude: [
-      "node_modules",
-      "**/*.spec.ts",
-      "**/*.spec.tsx",
-      "**/*.spec.js",
-      "**/*.spec.jsx",
-    ], // Specify which files to exclude
-  };
-
-  return fs.writeFile("tsconfig.json", JSON.stringify(tsconfig, null, 2));
-}
