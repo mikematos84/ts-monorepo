@@ -1,14 +1,13 @@
 import prompts from "prompts";
 import { program } from "commander";
 import path from "path";
-import { spawn, spawnSync } from "child_process";
+import childProcess, { spawn } from "child_process";
 import colors from "colors";
 import fs from "fs-extra";
 import fg from "fast-glob";
 
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-import { ChildProcess } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,6 +15,7 @@ const __dirname = dirname(__filename);
 const ROOT_PATH = path.join(__dirname, "../../");
 const SCRIPT_PATH = __dirname;
 const TEMPLATES_PATH = path.join(SCRIPT_PATH, "templates");
+const CODEMODS_PATH = path.join(SCRIPT_PATH, "codemods");
 
 let PACKAGE_PATH = null;
 
@@ -124,130 +124,52 @@ async function changeFileExtensions() {
   process.stdout.write(colors.green(" SUCCESS!\n"));
 }
 
-async function updatePackageJson() {
-  process.stdout.write(colors.yellow("Updating package.json..."));
-  const packageJsonPath = path.join(PACKAGE_PATH, "package.json");
-  const packageJson = await fs.readJson(packageJsonPath);
-  const devDeps = [
-    "ts-jest",
-    "typescript",
-    "typescript-eslint",
-    "@types/jest",
-    "@types/react",
-    "@types/react-dom",
-    "@rollup/plugin-typescript",
-    "rollup-plugin-dts",
-  ];
-  for (const dep of devDeps) {
-    delete packageJson.devDependencies[dep];
+async function runCodemod(
+  transform,
+  options = {
+    parser: "tsx",
+    extensions: "ts,tsx,js,jsx",
   }
-  await fs.writeJson(packageJsonPath, packageJson, { spaces: 2 });
-  process.stdout.write(colors.green(" SUCCESS!\n"));
+) {
+  return spawnSync(
+    "npx",
+    [
+      "jscodeshift",
+      "-t",
+      path.join(CODEMODS_PATH, transform),
+      PACKAGE_PATH,
+      `--extensions=${options.extensions}`,
+      `--parser=${options.parser}`,
+    ],
+    {
+      stdio: "inherit",
+      shell: true,
+      encoding: "utf-8",
+    }
+  );
 }
 
-async function updateJestConfig() {
-  process.stdout.write(colors.yellow("Updating Jest config..."));
-  const jestConfigPath = path.join(PACKAGE_PATH, "jest.config.mjs");
-  let content = await fs.readFile(jestConfigPath, "utf8");
-  content = content.replace(/ts-jest/g, "jest");
-  await fs.writeFile(jestConfigPath, content, "utf8");
-  process.stdout.write(colors.green(" SUCCESS!\n"));
-}
+async function spawnSync(str) {
+  const [command, ...args] = str.split(" ");
+  return new Promise((resolve, reject) => {
+    const process = childProcess.spawn(command, args, {
+      stdio: "inherit",
+      shell: true,
+      encoding: "utf-8",
+    });
 
-async function updateEslintConfig() {
-  process.stdout.write(colors.yellow("Updating ESLint config..."));
-  const eslintConfigPath = path.join(PACKAGE_PATH, "eslint.config.mjs");
-  let content = await fs.readFile(eslintConfigPath, "utf8");
-  content = content.replace(/import tseslint from "typescript-eslint";\n/g, "");
-  content = content.replace(/...tseslint.configs.recommended,\n/g, "");
-  await fs.writeFile(eslintConfigPath, content, "utf8");
-  process.stdout.write(colors.green(" SUCCESS!\n"));
-}
+    process.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Process exited with code ${code}`));
+      }
+    });
 
-async function updateSwcConfig() {
-  process.stdout.write(colors.yellow("Updating SWC config..."));
-  const swcConfigPath = path.join(PACKAGE_PATH, ".swcrc");
-  let config = await fs.readJson(swcConfigPath);
-  config.jsc.parser.syntax = "ecmascript";
-  config.jsc.parser.jsx = true;
-  delete config.jsc.parser.tsx;
-  await fs.writeJson(swcConfigPath, config, { spaces: 2 });
-  process.stdout.write(colors.green(" SUCCESS!\n"));
-}
-
-async function updateStorybookConfig() {
-  process.stdout.write(colors.yellow("Updating Storybook config..."));
-  const storybookConfigPath = path.join(PACKAGE_PATH, ".storybook/main.js");
-  let content = await fs.readFile(storybookConfigPath, "utf8");
-  content = content.replace(
-    /config.module.rules = config.module.rules.filter\(\(rule\) => !rule.test\?.toString\(\).includes\("tsx"\)\);\n/g,
-    ""
-  );
-
-  content = content.replace(
-    /config.module.rules.push\({\n\s+test: \/\.\(js\|mjs\|jsx\|ts\|tsx\)\$\/,\n\s+exclude: \/node_modules\/,\n\s+use: {\n\s+loader: getAbsolutePath\("swc-loader"\),\n\s+options: {\n\s+jsc: swcrc.jsc,\n\s+},\n\s+},\n\s+}\);\n/g,
-    ""
-  );
-
-  content = content.replace(
-    /import type { StorybookConfig } from "@storybook\/react-webpack5";\n/g,
-    ""
-  );
-
-  content = content.replace(
-    /function getAbsolutePath\(value: string\): any {/g,
-    "function getAbsolutePath(value) {"
-  );
-
-  content = content.replace(
-    /const config: StorybookConfig = {/g,
-    "const config = {"
-  );
-
-  await fs.writeFile(storybookConfigPath, content, "utf8");
-  process.stdout.write(colors.green(" SUCCESS!\n"));
-}
-
-async function updateStorybookPreview() {
-  process.stdout.write(colors.yellow("Updating Storybook preview..."));
-  const storybookPreviewPath = path.join(PACKAGE_PATH, ".storybook/preview.js");
-  let content = await fs.readFile(storybookPreviewPath, "utf8");
-  content = content.replace(
-    /import type { Preview } from "@storybook\/react";\n/g,
-    ""
-  );
-  content = content.replace(/const preview: Preview = {/g, "const preview = {");
-  await fs.writeFile(storybookPreviewPath, content, "utf8");
-  process.stdout.write(colors.green(" SUCCESS!\n"));
-}
-
-async function installDependencies() {
-  console.info(colors.yellow("Installing dependencies..."));
-  spawnSync("npm", ["i"], {
-    stdio: "inherit",
-    shell: true,
-    cwd: PACKAGE_PATH,
+    process.on("error", (err) => {
+      reject(err);
+    });
   });
-}
-
-async function updateRollupConfig() {
-  process.stdout.write(colors.yellow("Updating Rollup config..."));
-  const rollupConfigPath = path.join(PACKAGE_PATH, "rollup.config.mjs");
-  let content = await fs.readFile(rollupConfigPath, "utf8");
-  content = content.replace(/\.ts(['"])/g, ".js$1");
-  content = content.replace(
-    /import typescript from "@rollup\/plugin-typescript";\n/g,
-    ""
-  );
-  content = content.replace(/import dts from "rollup-plugin-dts";\n/g, "");
-
-  content = content.replace(/typescript\(\{[\s\S]*?\}\),?\n?/gm, "");
-
-  await fs.writeFile(rollupConfigPath, content, "utf8");
-  await spawnSync("npx", ["prettier", "--write", rollupConfigPath], {
-    stdio: "inherit",
-  });
-  process.stdout.write(colors.green(" SUCCESS!\n"));
 }
 
 (async () => {
@@ -260,15 +182,22 @@ async function updateRollupConfig() {
   await updatePackageNameReferences();
 
   if (!options.typescript) {
-    await updateImportStatements();
+    await spawnSync(
+      `jscodeshift -t ${CODEMODS_PATH}/convert-ts-to-js.mjs ${PACKAGE_PATH} --extensions=ts,tsx --parser=tsx`
+    );
+    await spawnSync(
+      `jscodeshift -t ${CODEMODS_PATH}/remove-rollup-ts-config.mjs ${PACKAGE_PATH}/rollup.config.mjs --parser=tsx`
+    );
+    await spawnSync(
+      `jscodeshift -t ${CODEMODS_PATH}/remove-storybook-ts-config.mjs ${PACKAGE_PATH}/.storybook/main.ts --parser=tsx`
+    );
+    await spawnSync(
+      `jscodeshift -t ${CODEMODS_PATH}/remove-ts-packages.mjs ${PACKAGE_PATH}/package.json`
+    );
+    await spawnSync(
+      `jscodeshift -t ${CODEMODS_PATH}/update-swcrc-for-js.mjs ${PACKAGE_PATH}/.swcrc --parser=tsx`
+    );
     await changeFileExtensions();
-    await updatePackageJson();
-    await updateJestConfig();
-    await updateEslintConfig();
-    await updateSwcConfig();
-    await updateStorybookConfig();
-    await updateStorybookPreview();
-    await updateRollupConfig();
   }
 
   // await installDependencies();

@@ -4,7 +4,7 @@ export default async () => {
       "\\.(css|jpg|png|gif)$": "<rootDir>/.jest/empty-loader.mjs",
       "\\.svg$": "<rootDir>/.jest/svgr-mock.mjs",
     },
-    preset: "jest",
+    preset: "ts-jest",
     testEnvironment: "jsdom",
     setupFiles: ["<rootDir>/.jest/register-context.mjs"],
     setupFilesAfterEnv: ["<rootDir>/.jest/setup-jest.mjs"],

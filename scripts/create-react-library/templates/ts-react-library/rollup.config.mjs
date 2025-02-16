@@ -3,7 +3,7 @@ import commonjs from "@rollup/plugin-commonjs";
 import resolve from "@rollup/plugin-node-resolve";
 import peerDepsExternal from "rollup-plugin-peer-deps-external";
 import swc from "@rollup/plugin-swc";
-import pkg from "./package.json" assert { type: "json" };
+import pkg from "./package.json" with { type: "json" };
 import dts from "rollup-plugin-dts";
 import fs from "fs-extra";
 import fg from "fast-glob";

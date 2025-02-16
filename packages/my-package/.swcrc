@@ -1,10 +1,10 @@
 {
   "jsc": {
     "parser": {
-      "syntax": "ecmascript",
+      "syntax": "typescript",
+      "tsx": true,
       "decorators": true,
-      "dynamicImport": true,
-      "jsx": true
+      "dynamicImport": true
     },
     "transform": {
       "react": {

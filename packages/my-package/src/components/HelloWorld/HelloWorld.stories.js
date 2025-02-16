@@ -1,4 +1,4 @@
-import HellowWorld from "./index.js";
+import HellowWorld from "./index.tsx";
 
 const meta = {
   component: HellowWorld,
