@@ -1,21 +1,21 @@
 import prompts from "prompts";
 import { program } from "commander";
-import path from "path";
-import childProcess, { spawn } from "child_process";
+import path, { format } from "path";
 import colors from "colors";
 import fs from "fs-extra";
 import fg from "fast-glob";
 
 import { dirname } from "path";
 import { fileURLToPath } from "url";
+import { spawnSync } from "./utils.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const ROOT_PATH = path.join(__dirname, "../../");
+const ROOT_PATH = path.join(__dirname, "../");
 const SCRIPT_PATH = __dirname;
 const TEMPLATES_PATH = path.join(SCRIPT_PATH, "templates");
-const CODEMODS_PATH = path.join(SCRIPT_PATH, "codemods");
+const TRANSFORMS_PATH = path.join(SCRIPT_PATH, "transforms");
 
 let PACKAGE_PATH = null;
 
@@ -96,80 +96,83 @@ async function updatePackageNameReferences() {
   process.stdout.write(colors.green(" SUCCESS!\n"));
 }
 
-async function updateImportStatements() {
-  process.stdout.write(colors.yellow("Updating import statements..."));
-  const files = await fg.sync(`**/*.{ts,tsx}`, {
-    cwd: PACKAGE_PATH,
-    absolute: true,
-  });
-  for (const file of files) {
-    let content = await fs.readFile(file, "utf8");
-    content = content.replace(/\.tsx?(['"])/g, ".js$1");
-    await fs.writeFile(file, content, "utf8");
+async function updatePackageJsonForJs() {
+  console.info(colors.yellow("Removing TypeScript-related modules..."));
+  const packageJson = await fs.readJSON(path.join(packagePath, "package.json"));
+
+  // remove "types" field
+  delete packageJson.types;
+
+  // remove TypeScript-related dependencies
+  const modules = [
+    "@rollup/plugin-typescript",
+    "@types/jest",
+    "@types/react",
+    "@types/react-dom",
+    "ts-jest",
+    "typescript",
+    "typescript-eslint",
+  ];
+
+  // delete the modules from peerDependencies if they exist
+  if (packageJson.peerDependencies) {
+    modules.forEach((module) => {
+      delete packageJson.peerDependencies[module];
+    });
   }
+
+  // delete the modules from devDependencies if they exist
+  if (packageJson.devDependencies) {
+    modules.forEach((module) => {
+      delete packageJson.devDependencies[module];
+    });
+  }
+
+  // delete the modules from dependencies if they exist
+  if (packageJson.dependencies) {
+    modules.forEach((module) => {
+      delete packageJson.dependencies[module];
+    });
+  }
+
+  await fs.writeJSON(path.join(packagePath, "package.json"), packageJson, {
+    spaces: 2,
+  });
+
   process.stdout.write(colors.green(" SUCCESS!\n"));
 }
 
-async function changeFileExtensions() {
-  process.stdout.write(colors.yellow("Changing file extensions..."));
-  const files = await fg.sync(`**/*.{ts,tsx}`, {
+async function updateSwcConfigForJs() {
+  console.info(colors.yellow("Updating SWC configuration..."));
+  const swcConfig = await fs.readJSON(path.join(packagePath, ".swcrc"));
+
+  const { syntax, tsx, ...rest } = swcConfig.jsc.parser;
+
+  swcConfig.jsc.parser = {
+    syntax: "ecmascript",
+    jsx: true,
+    ...rest,
+  };
+
+  delete swcConfig.jsc.parser.tsx;
+
+  await fs.writeJSON(path.join(packagePath, ".swcrc"), swcConfig, {
+    spaces: 2,
+  });
+  process.stdout.write(colors.green(" SUCCESS!\n"));
+}
+
+async function renameFilesExtensions() {
+  const files = await fg.sync(["**/*.ts", "**/*.tsx"], {
     cwd: PACKAGE_PATH,
     absolute: true,
     dot: true,
   });
+
   for (const file of files) {
-    const newFile = file.replace(/\.(ts|tsx)$/, ".js");
-    await fs.rename(file, newFile);
+    const newFileName = file.replace(/\.tsx?$/, ".js");
+    await fs.rename(file, newFileName);
   }
-  process.stdout.write(colors.green(" SUCCESS!\n"));
-}
-
-async function runCodemod(
-  transform,
-  options = {
-    parser: "tsx",
-    extensions: "ts,tsx,js,jsx",
-  }
-) {
-  return spawnSync(
-    "npx",
-    [
-      "jscodeshift",
-      "-t",
-      path.join(CODEMODS_PATH, transform),
-      PACKAGE_PATH,
-      `--extensions=${options.extensions}`,
-      `--parser=${options.parser}`,
-    ],
-    {
-      stdio: "inherit",
-      shell: true,
-      encoding: "utf-8",
-    }
-  );
-}
-
-async function spawnSync(str) {
-  const [command, ...args] = str.split(" ");
-  return new Promise((resolve, reject) => {
-    const process = childProcess.spawn(command, args, {
-      stdio: "inherit",
-      shell: true,
-      encoding: "utf-8",
-    });
-
-    process.on("close", (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`Process exited with code ${code}`));
-      }
-    });
-
-    process.on("error", (err) => {
-      reject(err);
-    });
-  });
 }
 
 (async () => {
@@ -182,23 +185,42 @@ async function spawnSync(str) {
   await updatePackageNameReferences();
 
   if (!options.typescript) {
+    // const typescriptFiles = await fg
+    //   .sync(["**/*.ts", "**/*.tsx"], {
+    //     cwd: PACKAGE_PATH,
+    //     absolute: true,
+    //     dot: true,
+    //   })
+    //   .join(" ");
+
+    // await spawnSync(
+    //   `jscodeshift -t ${TRANSFORMS_PATH}/convert-ts-to-js.mjs ${typescriptFiles} --parser=tsx`
+    // );
+
+    // await spawnSync(
+    //   `jscodeshift -t ${TRANSFORMS_PATH}/remove-ts-from-eslint-config.mjs ${path.join(
+    //     PACKAGE_PATH,
+    //     "eslint.config.mjs"
+    //   )} --parser=tsx`
+    // );
+
     await spawnSync(
-      `jscodeshift -t ${CODEMODS_PATH}/convert-ts-to-js.mjs ${PACKAGE_PATH} --extensions=ts,tsx --parser=tsx`
+      `jscodeshift -t ${TRANSFORMS_PATH}/update-storybook-webpack-config-for-js.mjs ${path.join(
+        PACKAGE_PATH,
+        ".storybook/main.ts"
+      )} --parser=tsx`
     );
-    await spawnSync(
-      `jscodeshift -t ${CODEMODS_PATH}/remove-rollup-ts-config.mjs ${PACKAGE_PATH}/rollup.config.mjs --parser=tsx`
-    );
-    await spawnSync(
-      `jscodeshift -t ${CODEMODS_PATH}/remove-storybook-ts-config.mjs ${PACKAGE_PATH}/.storybook/main.ts --parser=tsx`
-    );
-    await spawnSync(
-      `jscodeshift -t ${CODEMODS_PATH}/remove-ts-packages.mjs ${PACKAGE_PATH}/package.json`
-    );
-    await spawnSync(
-      `jscodeshift -t ${CODEMODS_PATH}/update-swcrc-for-js.mjs ${PACKAGE_PATH}/.swcrc --parser=tsx`
-    );
-    await changeFileExtensions();
+
+    // await updatePackageJsonForJs();
+
+    // await updateSwcConfigForJs();
+
+    // await renameFilesExtensions();
   }
 
-  // await installDependencies();
+  // // Install dependencies
+  // await spawnSync("npm install", { cwd: PACKAGE_PATH });
+
+  // // Run storybook
+  // await spawnSync("npm run storybook", { cwd: PACKAGE_PATH });
 })();

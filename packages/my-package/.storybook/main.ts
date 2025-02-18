@@ -16,7 +16,7 @@ function getAbsolutePath(value: string): any {
 }
 
 const config: StorybookConfig = {
-  stories: ["../src/**/*.stories.@(js|jsx|mjs|ts|tsx|mdx)"],
+  stories: ["../src/**/*.stories.@(js|jsx|mjs|mdx)"],
   addons: [
     getAbsolutePath("@storybook/addon-essentials"),
     getAbsolutePath("@storybook/addon-interactions"),
@@ -31,14 +31,9 @@ const config: StorybookConfig = {
     builder: "webpack5",
   },
   webpackFinal: async (config) => {
-    // Remove the default Babel loader
-    config.module.rules = config.module.rules.filter(
-      (rule) => !rule.test?.toString().includes("tsx")
-    );
-
-    // add the SWC loader
+    // Add the SWC loader
     config.module.rules.push({
-      test: /\.(js|mjs|jsx|ts|tsx)$/,
+      test: "\\.(js|jsx|mjs)$",
       exclude: /node_modules/,
       use: {
         loader: getAbsolutePath("swc-loader"),

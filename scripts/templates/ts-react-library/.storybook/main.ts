@@ -36,9 +36,9 @@ const config: StorybookConfig = {
       (rule) => !rule.test?.toString().includes("tsx")
     );
 
-    // add the SWC loader
+    // Add the SWC loader
     config.module.rules.push({
-      test: /\.(js|mjs|jsx|ts|tsx)$/,
+      test: /\.(js|jsx|ts|tsx|mjs)$/,
       exclude: /node_modules/,
       use: {
         loader: getAbsolutePath("swc-loader"),
