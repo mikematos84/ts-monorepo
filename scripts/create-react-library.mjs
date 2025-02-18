@@ -207,7 +207,7 @@ async function renameFilesExtensions() {
     await spawnSync(
       `npx jscodeshift -t ${TRANSFORMS_PATH}/update-storybook-webpack-config-for-js.mjs ${path.join(
         PACKAGE_PATH,
-        ".storybook/main.js"
+        ".storybook/main.ts"
       )} --parser=tsx`
     );
 
@@ -218,9 +218,9 @@ async function renameFilesExtensions() {
     await renameFilesExtensions();
   }
 
-  // // Install dependencies
-  // await spawnSync("npm install", { cwd: PACKAGE_PATH });
+  // Install dependencies
+  await spawnSync("npm install", { cwd: PACKAGE_PATH });
 
-  // // Run storybook
-  // await spawnSync("npm run storybook", { cwd: PACKAGE_PATH });
+  // Run storybook
+  await spawnSync("npm run storybook", { cwd: PACKAGE_PATH });
 })();
