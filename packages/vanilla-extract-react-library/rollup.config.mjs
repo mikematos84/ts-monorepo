@@ -5,6 +5,8 @@ import swc from "@rollup/plugin-swc";
 import pkg from "./package.json" with { type: "json" };
 import fs from "fs-extra";
 import path from "path";
+import { vanillaExtractPlugin } from '@vanilla-extract/rollup-plugin';
+import postcss from "rollup-plugin-postcss";
 
 // load the SWC configuration
 const swcConfig = await fs.readJSON(path.resolve(".swcrc"));
@@ -37,6 +39,12 @@ export default [
       peerDepsExternal(),
       resolve({ extensions: [".js", ".jsx"] }),
       commonjs(),
+      postcss({
+        extract: true,
+        modules: true,
+        inject: true,
+      }),
+      vanillaExtractPlugin({}),
       swc({
         swc: {
           jsc: swcConfig.jsc
