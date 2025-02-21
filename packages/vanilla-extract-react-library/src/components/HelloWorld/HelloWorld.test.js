@@ -3,6 +3,6 @@ import HelloWorld from ".";
 
 test("renders HelloWorld", () => {
   render(<HelloWorld />);
-  const element = screen.getByText(/Hello World!/i);
-  expect(element).toBeInTheDocument();
+  const element = screen.getAllByText(/Hello World!/i);
+  expect(element.length).toBe(3);
 });

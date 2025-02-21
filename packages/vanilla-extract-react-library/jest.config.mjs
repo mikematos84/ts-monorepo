@@ -4,7 +4,6 @@ export default async () => {
       "\\.(css|jpg|png|gif)$": "<rootDir>/.jest/empty-loader.mjs",
       "\\.svg$": "<rootDir>/.jest/svgr-mock.mjs",
     },
-    preset: "ts-jest",
     testEnvironment: "jsdom",
     setupFiles: ["<rootDir>/.jest/register-context.mjs"],
     setupFilesAfterEnv: ["<rootDir>/.jest/setup-jest.mjs"],
@@ -15,10 +14,10 @@ export default async () => {
       "<rootDir>/.yalc",
       "<rootDir>/.jest",
     ],
-    moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node", "mjs"],
+    moduleFileExtensions: ["js", "jsx", "json", "node", "mjs"],
     testMatch: ["<rootDir>/src/**/*.(test|spec).(ts|tsx|js|jsx|mjs)"],
     transform: {
-      "^.+\\.[tj]sx?$": ["@swc/jest"],
+      "^.+\\.[j]sx?$": ["@swc/jest"],
       "^.+\\.mjs$": ["@swc/jest"],
     },
   };
