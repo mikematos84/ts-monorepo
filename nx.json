@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "targetDefaults": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "{projectRoot}/dist"
+      ],
+      "cache": true
+    },
+    "build:bundle": {
+      "dependsOn": [
+        "^build:bundle"
+      ]
+    },
+    "build:cleanup": {
+      "dependsOn": [
+        "^build:cleanup"
+      ]
+    },
+    "test": {
+      "outputs": [
+        "{projectRoot}/coverage"
+      ],
+      "cache": true
+    },
+    "lint": {
+      "cache": true
+    }
+  }
+}

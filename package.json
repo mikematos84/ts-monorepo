@@ -9,7 +9,8 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "nx run-many --target=test --all",
+    "build": "nx run-many --target=build --projects=packages/*"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +22,7 @@
     "fast-glob": "^3.3.3",
     "fs-extra": "^11.3.0",
     "jscodeshift": "^17.1.2",
-    "prompts": "^2.4.2"
+    "prompts": "^2.4.2",
+    "nx": "20.4.6"
   }
 }
