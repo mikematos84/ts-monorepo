@@ -138,3 +138,7 @@ dist
 # Storybook
 *storybook.log
 storybook-static/
+
+# yalc
+.yalc/
+yalc.lock
