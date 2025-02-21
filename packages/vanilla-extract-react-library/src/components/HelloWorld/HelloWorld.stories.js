@@ -1,4 +1,4 @@
-import HelloWorld from "./index";
+import HelloWorld from ".";
 
 const meta = {
   component: HelloWorld,

@@ -1,6 +1,11 @@
-import { button, buttonPrimary, buttonSecondary, wrapper } from "./styles.css";
+import {
+  button,
+  buttonPrimary,
+  buttonSecondary,
+  wrapper,
+} from "./HelloWorld.css";
 
-export default function HelloWorld() {
+const HelloWorld = () => {
   return (
     <div className={wrapper}>
       <button type="button" className={button}>
@@ -14,4 +19,6 @@ export default function HelloWorld() {
       </button>
     </div>
   );
-}
+};
+
+export default HelloWorld;

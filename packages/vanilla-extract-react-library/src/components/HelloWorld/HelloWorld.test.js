@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import HelloWorld from "./index";
+import HelloWorld from ".";
 
 test("renders HelloWorld", () => {
   render(<HelloWorld />);

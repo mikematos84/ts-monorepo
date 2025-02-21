@@ -1,15 +1,18 @@
-import typescript from "@rollup/plugin-typescript";
 import commonjs from "@rollup/plugin-commonjs";
 import resolve from "@rollup/plugin-node-resolve";
 import peerDepsExternal from "rollup-plugin-peer-deps-external";
 import swc from "@rollup/plugin-swc";
 import pkg from "./package.json" with { type: "json" };
-import dts from "rollup-plugin-dts";
 import fs from "fs-extra";
-import fg from "fast-glob";
-import colors from "colors";
+import path from "path";
 
-const external = [...Object.keys(pkg?.peerDependencies || [])];
+// load the SWC configuration
+const swcConfig = await fs.readJSON(path.resolve(".swcrc"));
+
+const external = [
+  ...Object.keys(pkg?.peerDependencies || []), 
+  ...Object.keys(pkg?.devDependencies || [])
+];
 
 const output = [
   {
@@ -27,39 +30,18 @@ const output = [
 /** @type {import('rollup').RollupOptions} */
 export default [
   ...output.map((output) => ({
-    input: "src/index.ts",
+    input: "src/index.js",
     external,
     output,
     plugins: [
       peerDepsExternal(),
-      resolve(),
+      resolve({ extensions: [".js", ".jsx"] }),
       commonjs(),
-      typescript({
-        tsconfig: "./tsconfig.json",
-        outDir: output.dir,
-        declarationDir: `${output.dir}/types`,
-        sourceMap: false,
+      swc({
+        swc: {
+          jsc: swcConfig.jsc
+        }
       }),
-      swc(),
     ],
   })),
-  {
-    input: "dist/esm/types/index.d.ts",
-    output: { file: "dist/index.d.ts", format: "esm" },
-    plugins: [
-      dts(),
-      {
-        name: "cleanup-dts-files",
-        generateBundle() {
-          const files = fg.sync(["dist/{cjs,esm}/**/*.d.ts"]);
-          console.info(colors.green("Cleaning up d.ts files"));
-          files.forEach((file) => fs.removeSync(file));
-
-          const dirs = fg.sync(["dist/{cjs,esm}"], { onlyDirectories: true });
-          console.info(colors.green("Cleaning up types directory"));
-          dirs.forEach((dir) => fs.removeSync(`${dir}/types`));
-        },
-      },
-    ],
-  },
 ];
