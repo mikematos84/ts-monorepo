@@ -42,7 +42,7 @@ if (!inputs.packageName) {
       }
       return true;
     },
-    initial: "my-package",
+    initial: "react-library",
   });
 }
 

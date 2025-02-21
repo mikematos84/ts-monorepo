@@ -12,13 +12,15 @@ module.exports = function (fileInfo, api) {
       );
     });
 
-  // find the webpackFinal Function
+  // Find the webpackFinal function
   root
     .find(j.ObjectProperty)
     .filter((path) => path.node.key.name === "webpackFinal")
     .forEach((path) => {
+      const functionBody = path.node.value.body.body;
+
       // Remove filter rule for tsx files
-      path.node.value.body.body = path.node.value.body.body.filter((node) => {
+      path.node.value.body.body = functionBody.filter((node) => {
         if (node.type === "ExpressionStatement") {
           const expression = node.expression;
           if (expression.type === "AssignmentExpression") {
@@ -28,28 +30,22 @@ module.exports = function (fileInfo, api) {
         return true;
       });
 
-      // Update the config.module.rules.push rule for swc-loader to only test for js|jsx|mjs files
-      path.node.value.body.body.forEach((node) => {
-        if (node.type === "ExpressionStatement") {
-          const expression = node.expression;
-          if (expression.type === "CallExpression") {
-            const args = expression.arguments;
-            if (args.length === 1) {
-              const arg = args[0];
-              if (arg.type === "ObjectExpression") {
-                const properties = arg.properties;
-                properties.forEach((property) => {
-                  if (property.type === "ObjectProperty") {
-                    if (property.key.name === "test") {
-                      property.value = j.stringLiteral("\\.(js|jsx|mjs)$");
-                    }
-                  }
-                });
-              }
-            }
-          }
+      // Update the regex to exclude ts and tsx
+      const rule = functionBody.find(
+        (node) =>
+          node.type === "ExpressionStatement" &&
+          node.expression.type === "CallExpression" &&
+          node.expression.callee.property.name === "push"
+      );
+      if (rule) {
+        const testProperty = rule.expression.arguments[0].properties.find(
+          (prop) => prop.key.name === "test"
+        );
+        if (testProperty) {
+          // Update the regex to exclude ts and tsx
+          testProperty.value = j.literal(/\.(js|jsx|mjs)$/);
         }
-      });
+      }
     });
 
   return root.toSource();
