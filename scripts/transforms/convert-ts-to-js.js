@@ -66,12 +66,35 @@ module.exports = function (fileInfo, api, options) {
   // Remove TypeScript type aliases (e.g., `type Story = StoryObj<typeof meta>;`)
   root.find(j.TSTypeAliasDeclaration).remove();
 
-  // If there are any import statements that use .tsx or .ts extensions, remove them
+  // Update import references
   root.find(j.ImportDeclaration).forEach((path) => {
-    const { source } = path.node;
+    const source = path.node.source.value;
 
-    if (source.value.endsWith(".tsx") || source.value.endsWith(".ts")) {
-      source.value = source.value.replace(/\.tsx?$/, "");
+    if (typeof source === "string") {
+      const updatedSource = source
+        .replace(/\.tsx?$/, (ext) => (ext === ".tsx" ? ".jsx" : ".js"))
+        .replace(/\/index\.(js|jsx)$/, "");
+
+      if (updatedSource !== source) {
+        path.node.source.value = updatedSource;
+      }
+    }
+  });
+
+  // Update export references
+  root.find(j.ExportNamedDeclaration).forEach((path) => {
+    if (path.node.source) {
+      const source = path.node.source.value;
+
+      if (typeof source === "string") {
+        const updatedSource = source
+          .replace(/\.tsx?$/, (ext) => (ext === ".tsx" ? ".jsx" : ".js"))
+          .replace(/\/index\.(js|jsx)$/, "");
+
+        if (updatedSource !== source) {
+          path.node.source.value = updatedSource;
+        }
+      }
     }
   });
 

@@ -185,37 +185,37 @@ async function renameFilesExtensions() {
   await updatePackageNameReferences();
 
   if (!options.typescript) {
-    const typescriptFiles = await fg
-      .sync(["**/*.ts", "**/*.tsx"], {
-        cwd: PACKAGE_PATH,
-        absolute: true,
-        dot: true,
-      })
-      .join(" ");
+    const typescriptFiles = await fg.sync(["**/*.ts", "**/*.tsx"], {
+      cwd: PACKAGE_PATH,
+      absolute: true,
+      dot: true,
+    });
 
     await spawnSync(
-      `npx jscodeshift -t ${TRANSFORMS_PATH}/convert-ts-to-js.mjs ${typescriptFiles} --parser=tsx`
+      `npx jscodeshift -t ${TRANSFORMS_PATH}/convert-ts-to-js.js ${typescriptFiles.join(
+        " "
+      )} --parser=tsx`
     );
 
     await spawnSync(
-      `npx jscodeshift -t ${TRANSFORMS_PATH}/remove-ts-from-eslint-config.mjs ${path.join(
+      `npx jscodeshift -t ${TRANSFORMS_PATH}/remove-ts-from-eslint-config.js ${path.join(
         PACKAGE_PATH,
         "eslint.config.mjs"
       )} --parser=tsx`
     );
 
     await spawnSync(
-      `npx jscodeshift -t ${TRANSFORMS_PATH}/update-storybook-webpack-config-for-js.mjs ${path.join(
+      `npx jscodeshift -t ${TRANSFORMS_PATH}/update-storybook-webpack-config-for-js.js ${path.join(
         PACKAGE_PATH,
         ".storybook/main.ts"
       )} --parser=tsx`
     );
 
     await spawnSync(
-      `npx jscodeshift -t ${TRANSFORMS_PATH}/update-jest-config-for-js.mjs ${path.join(
+      `npx jscodeshift -t ${TRANSFORMS_PATH}/update-jest-config-for-js.js ${path.join(
         PACKAGE_PATH,
         "jest.config.mjs"
-      )} --parser=tsx`
+      )}`
     );
 
     await updatePackageJsonForJs();
