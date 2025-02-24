@@ -211,6 +211,13 @@ async function renameFilesExtensions() {
       )} --parser=tsx`
     );
 
+    await spawnSync(
+      `npx jscodeshift -t ${TRANSFORMS_PATH}/update-jest-config-for-js.mjs ${path.join(
+        PACKAGE_PATH,
+        "jest.config.mjs"
+      )} --parser=tsx`
+    );
+
     await updatePackageJsonForJs();
 
     await updateSwcConfigForJs();
