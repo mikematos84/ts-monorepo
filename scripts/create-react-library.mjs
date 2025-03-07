@@ -180,7 +180,21 @@ async function renameFilesExtensions() {
 
   await cleanupTemplateFolder();
 
-  await fs.copy(path.join(TEMPLATES_PATH, "ts-react-library"), PACKAGE_PATH);
+  await fs.copy(path.join(TEMPLATES_PATH, "ts-react-library"), PACKAGE_PATH, {
+    filter: (src) => {
+      const excludes = [
+        "node_modules",
+        "coverage",
+        "dist",
+        "build",
+        "out",
+        "storybook-static",
+      ];
+      if (excludes.some((exclude) => src.includes(exclude))) {
+        return false;
+      }
+    },
+  });
 
   await updatePackageNameReferences();
 

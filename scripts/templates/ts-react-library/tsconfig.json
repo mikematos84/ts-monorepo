@@ -1,25 +1,5 @@
 {
-  "compilerOptions": {
-    "target": "es5",
-    "module": "esnext",
-    "jsx": "react-jsx",
-    "moduleResolution": "node",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "lib": ["dom", "esnext"],
-    "types": ["react", "react-dom", "jest"],
-    "allowJs": true,
-    "declaration": true,
-    "declarationDir": "dist",
-    "outDir": "dist",
-    "rootDir": "src",
-    "isolatedModules": true,
-    "allowImportingTsExtensions": true,
-    "emitDeclarationOnly": true
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "src/**/*.jsx"],
+  "extends": "./tsconfig.base.json",
   "exclude": [
     "node_modules",
     "**/*.spec.ts",

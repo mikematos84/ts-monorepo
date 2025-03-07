@@ -30,6 +30,27 @@ const config: StorybookConfig = {
   core: {
     builder: "webpack5",
   },
+  webpackFinal: async (config) => {
+    // Remove the default Babel loader
+    config.module.rules = config.module.rules.filter(
+      (rule) => !rule.test || !rule.test.toString().includes("tsx")
+    );
+
+    // Add SWC loader for TypeScript and JavaScript files
+    config.module.rules.push({
+      test: /\.(ts|tsx|js|jsx)$/,
+      exclude: /node_modules/,
+      use: {
+        loader: "swc-loader",
+        options: {
+          ...swcrc,
+        },
+      },
+    });
+
+    config.resolve.extensions.push(".ts", ".tsx", ".js", ".jsx");
+    return config;
+  },
 };
 
 export default config;
