@@ -175,6 +175,35 @@ async function renameFilesExtensions() {
   }
 }
 
+async function cleanupTsFilesAndFolders() {
+  const paths = [];
+
+  const folders = await fg.sync(["**/types"], {
+    cwd: PACKAGE_PATH,
+    absolute: true,
+    onlyDirectories: true,
+  });
+
+  paths.push(...folders);
+
+  const files = await fg.sync(
+    ["**/tsconfig.json", "**/tsconfig.*.json", "**/*.d.ts", "**/*.tsbuildinfo"],
+    {
+      cwd: PACKAGE_PATH,
+      absolute: true,
+      dot: true,
+    }
+  );
+
+  paths.push(...files);
+
+  for (const path of paths) {
+    if (await fs.pathExists(path)) {
+      await fs.remove(path);
+    }
+  }
+}
+
 (async () => {
   if (await fs.pathExists(PACKAGE_PATH)) await fs.remove(PACKAGE_PATH);
 
@@ -185,33 +214,7 @@ async function renameFilesExtensions() {
   await updatePackageNameReferences();
 
   if (!options.typescript) {
-    const cleanupFiles = await fg.sync(
-      [
-        "**/tsconfig.json",
-        "**/tsconfig.*.json",
-        "**/*.d.ts",
-        "**/*.tsbuildinfo",
-      ],
-      {
-        cwd: PACKAGE_PATH,
-        absolute: true,
-        dot: true,
-      }
-    );
-
-    for (const file of cleanupFiles) {
-      await fs.remove(file);
-    }
-
-    const cleanupFolders = await fg.sync(["**/types"], {
-      cwd: PACKAGE_PATH,
-      absolute: true,
-      onlyDirectories: true,
-    });
-
-    for (const folder of cleanupFolders) {
-      await fs.remove(folder);
-    }
+    await cleanupTsFilesAndFolders();
 
     const typescriptFiles = await fg.sync(["**/*.ts", "**/*.tsx"], {
       cwd: PACKAGE_PATH,
