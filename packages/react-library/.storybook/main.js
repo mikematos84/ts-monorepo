@@ -28,6 +28,22 @@ const config = {
   core: {
     builder: "webpack5",
   },
+  webpackFinal: async (config) => {
+    // Add SWC loader for TypeScript and JavaScript files
+    config.module.rules.push({
+      test: /\.(js|jsx|mjs)$/,
+      exclude: /node_modules/,
+      use: {
+        loader: "swc-loader",
+        options: {
+          ...swcrc,
+        },
+      },
+    });
+
+    config.resolve.extensions.push(".ts", ".tsx", ".js", ".jsx");
+    return config;
+  },
 };
 
 export default config;

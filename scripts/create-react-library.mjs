@@ -180,25 +180,39 @@ async function renameFilesExtensions() {
 
   await cleanupTemplateFolder();
 
-  await fs.copy(path.join(TEMPLATES_PATH, "ts-react-library"), PACKAGE_PATH, {
-    filter: (src) => {
-      const excludes = [
-        "node_modules",
-        "coverage",
-        "dist",
-        "build",
-        "out",
-        "storybook-static",
-      ];
-      if (excludes.some((exclude) => src.includes(exclude))) {
-        return false;
-      }
-    },
-  });
+  await fs.copy(path.join(TEMPLATES_PATH, "ts-react-library"), PACKAGE_PATH);
 
   await updatePackageNameReferences();
 
   if (!options.typescript) {
+    const cleanupFiles = await fg.sync(
+      [
+        "**/tsconfig.json",
+        "**/tsconfig.*.json",
+        "**/*.d.ts",
+        "**/*.tsbuildinfo",
+      ],
+      {
+        cwd: PACKAGE_PATH,
+        absolute: true,
+        dot: true,
+      }
+    );
+
+    for (const file of cleanupFiles) {
+      await fs.remove(file);
+    }
+
+    const cleanupFolders = await fg.sync(["**/types"], {
+      cwd: PACKAGE_PATH,
+      absolute: true,
+      onlyDirectories: true,
+    });
+
+    for (const folder of cleanupFolders) {
+      await fs.remove(folder);
+    }
+
     const typescriptFiles = await fg.sync(["**/*.ts", "**/*.tsx"], {
       cwd: PACKAGE_PATH,
       absolute: true,
