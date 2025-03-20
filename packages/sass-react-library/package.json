@@ -1,5 +1,5 @@
 {
-  "name": "@mikematos84/ts-react-library",
+  "name": "@mikematos84/sass-react-library",
   "version": "1.0.0",
   "description": "Auto generated react library",
   "main": "dist/cjs/index.js",
@@ -30,7 +30,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mikematos84/ts-monorepo",
-    "directory": "packages/ts-react-library"
+    "directory": "packages/sass-react-library"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
@@ -78,8 +78,11 @@
     "jest-environment-jsdom": "^29.7.0",
     "mini-css-extract-plugin": "^2.9.2",
     "rollup": "^4.34.7",
+    "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-dts": "^6.1.1",
     "rollup-plugin-peer-deps-external": "^2.2.4",
+    "rollup-plugin-postcss": "^4.0.2",
+    "sass": "^1.86.0",
     "storybook": "^8.5.6",
     "swc-loader": "^0.2.6",
     "ts-jest": "^29.2.5",
