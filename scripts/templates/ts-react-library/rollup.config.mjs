@@ -8,8 +8,14 @@ import dts from "rollup-plugin-dts";
 import fs from "fs-extra";
 import fg from "fast-glob";
 import colors from "colors";
+import postcss from "rollup-plugin-postcss";
+import copy from "rollup-plugin-copy";
 
-const external = [...Object.keys(pkg?.peerDependencies || [])];
+const external = [
+  ...Object.keys(pkg?.peerDependencies || []), 
+  ...Object.keys(pkg?.devDependencies || []),
+  /\.scss/g
+];
 
 const output = [
   {
@@ -21,6 +27,7 @@ const output = [
     dir: "dist/esm",
     format: "esm",
     preserveModules: true,
+    preserveModulesRoot: "src",
   },
 ];
 
@@ -40,7 +47,24 @@ export default [
         declarationDir: `${output.dir}/types`,
         sourceMap: false,
       }),
+      // postcss({
+      //   extensions: [".css", ".scss"],
+      //   inject: true,
+      //   modules: true,
+      //   namedExports: true,
+      //   use: ["sass"],
+      // }),
       swc(),
+      copy({
+        targets: [
+          {
+            src: "src/**/*.scss",
+            dest: output.dir,
+          },
+        ],
+        flatten: false,
+        hook: "writeBundle",
+      })
     ],
   })),
   {

@@ -7,12 +7,13 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "dev": "rollup -c -w",
-    "clean": "rm -rf dist coverage node_modules storybook-static",
     "build": "rm -rf dist && rollup -c",
     "test": "jest src --coverage",
     "lint": "eslint src --fix",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "clean": "rm -rf dist coverage node_modules storybook-static",
+    "reset": "npm run clean && rm -rf node_modules"
   },
   "keywords": [],
   "author": "Mike Matos",
