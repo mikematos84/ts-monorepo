@@ -10,7 +10,9 @@
   ],
   "scripts": {
     "test": "nx run-many --target=test --all",
-    "build": "nx run-many --target=build --projects=packages/*"
+    "build": "nx run-many --target=build --all",
+    "clean": "nx run-many --target=clean --all",
+    "reset": "nx run-many --target=reset --all && rm -rf node_modules package-lock.json"
   },
   "keywords": [],
   "author": "",

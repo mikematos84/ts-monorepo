@@ -1,5 +1,5 @@
 {
-  "name": "@mikematos84/ts-react-library",
+  "name": "@mikematos84/sass-react-library",
   "version": "1.0.0",
   "description": "Auto generated react library",
   "main": "dist/cjs/index.js",
@@ -13,7 +13,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "clean": "rm -rf dist coverage storybook-static",
-    "reset": "npm run clean && rm -rf node_modules"
+    "reset": "yarn clean && rm -rf node_modules"
   },
   "keywords": [],
   "author": "Mike Matos",
@@ -31,7 +31,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mikematos84/ts-monorepo",
-    "directory": "packages/ts-react-library"
+    "directory": "packages/sass-react-library"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
