@@ -1,4 +1,5 @@
-import fs from 'fs';
+import fg from 'fast-glob';
+import fs from 'fs-extra';
 
 class TokenTransformer {
   private tokens: Record<string, any> = {};
@@ -10,7 +11,7 @@ class TokenTransformer {
     }
 
     if (typeof source === 'string') {
-      this.tokens = JSON.parse(fs.readFileSync(source, 'utf-8') || {});
+      this.tokens = fs.readJsonSync(source);
     }
   }
 
@@ -60,13 +61,13 @@ class TokenTransformer {
     this.vars = [];
   }
 
-  toCssVariables({ scope }: { scope?: string } = {}) {
+  toCssVariables({ scope = ':root' }: { scope?: string } = {}) {
     if (this.vars.length > 0) this.vars = [];
     this.tokens = this.replaceReferences(this.tokens);
     this.recurseTokens(this.tokens, '--');
     let content = this.vars
       .map(([key, value]) => {
-        return `${scope && '\t'}${key}: ${value};`;
+        return `${scope ? '\t' : ''}${key}: ${value};`;
       })
       .join('\n');
     return scope ? `${scope} {\n${content}\n}` : content;
@@ -78,7 +79,7 @@ class TokenTransformer {
     this.recurseTokens(this.tokens, '$');
     let content = this.vars
       .map(([key, value]) => {
-        return `${scope && '\t'}${key}: ${value};`;
+        return `${scope ? '\t' : ''}${key}: ${value};`;
       })
       .join('\n');
     return scope ? `${scope} {\n${content}\n}` : content;
@@ -86,3 +87,16 @@ class TokenTransformer {
 }
 
 export default TokenTransformer;
+
+async function main() {
+  const filepaths = await fg.sync('src/tokens/**/tokens.json', { cwd: process.cwd() });
+  for (const filepath of filepaths) {
+    const transformer = TokenTransformer.From(filepath);
+    const css = transformer.toCssVariables();
+    const sass = transformer.toSassVariables();
+    fs.outputFileSync(`${filepath.replace('tokens', 'themes').replace('tokens.json', '_tokens.css')}`, css);
+    fs.outputFileSync(`${filepath.replace('tokens', 'themes').replace('tokens.json', '_tokens.scss')}`, sass);
+  }
+}
+
+main();
