@@ -1,0 +1,56 @@
+@use "sass:map";
+
+.button {
+  --colors-info: #007bff;
+  --colors-success: #28a745;
+  --colors-warning: #ffc107;
+  --colors-danger: #dc3545;
+}
+
+$statusButtons: (
+  "info": (
+    background-color: var(--colors-info),
+  ),
+  "success": (
+    background-color: var(--colors-success),
+  ),
+  "warning": (
+    background-color: var(--colors-warning),
+  ),
+  "danger": (
+    background-color: var(--colors-danger),
+  ),
+);
+
+// default button styles
+.button {
+  background-color: var(--colors-info);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+
+  // Setup status base buttons
+  @each $key, $value in $statusButtons {
+    &--#{$key} {
+      background-color: map.get($value, background-color);
+
+      &:hover {
+        background-color: color-mix(
+          in srgb,
+          map.get($value, background-color),
+          rgb(0, 0, 0) 10%
+        );
+      }
+
+      &:active {
+        background-color: color-mix(
+          in srgb,
+          map.get($value, background-color),
+          rgb(0, 0, 0) 30%
+        );
+      }
+    }
+  }
+}

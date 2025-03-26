@@ -12,13 +12,14 @@
     "lib": ["dom", "esnext"],
     "types": ["react", "react-dom"],
     "allowJs": true,
-    "declaration": true,
-    "declarationDir": "dist",
     "outDir": "dist",
     "rootDir": "src",
     "isolatedModules": true,
     "allowImportingTsExtensions": true,
-    "emitDeclarationOnly": true
+    "noEmit": true,
+    "declaration": true,
+    "declarationMap": true,
+    "declarationDir": "dist"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "src/**/*.jsx"],
   "exclude": ["node_modules"]

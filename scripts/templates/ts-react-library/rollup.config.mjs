@@ -1,89 +1,95 @@
-import typescript from "@rollup/plugin-typescript";
-import commonjs from "@rollup/plugin-commonjs";
-import resolve from "@rollup/plugin-node-resolve";
-import peerDepsExternal from "rollup-plugin-peer-deps-external";
-import swc from "@rollup/plugin-swc";
-import pkg from "./package.json" with { type: "json" };
-import dts from "rollup-plugin-dts";
-import fs from "fs-extra";
-import fg from "fast-glob";
-import colors from "colors";
-import postcss from "rollup-plugin-postcss";
-import copy from "rollup-plugin-copy";
-
-const external = [
-  ...Object.keys(pkg?.peerDependencies || []), 
-  ...Object.keys(pkg?.devDependencies || []),
-  /\.scss/g
-];
+import typescript from '@rollup/plugin-typescript';
+import commonjs from '@rollup/plugin-commonjs';
+import resolve from '@rollup/plugin-node-resolve';
+import peerDepsExternal from 'rollup-plugin-peer-deps-external';
+import swc from '@rollup/plugin-swc';
+import pkg from './package.json' assert { type: 'json' };
+import watchGlobs from 'rollup-plugin-watch-globs';
+import copy from 'rollup-plugin-copy';
+import fg from 'fast-glob';
+import fs from 'fs-extra';
 
 const output = [
   {
-    dir: "dist/cjs",
-    format: "cjs",
-    exports: "named",
+    dir: 'dist/cjs',
+    format: 'cjs',
+    exports: 'named',
   },
   {
-    dir: "dist/esm",
-    format: "esm",
+    dir: 'dist/esm',
+    format: 'esm',
     preserveModules: true,
-    preserveModulesRoot: "src",
+    preserveModulesRoot: 'src',
   },
+];
+
+const external = [
+  ...Object.keys(pkg?.peerDependencies || []),
+  ...Object.keys(pkg?.devDependencies || []),
+  /\.scss/g,
+  'react/jsx-runtime',
+];
+
+const plugins = [
+  peerDepsExternal(),
+  resolve(),
+  commonjs(),
+  swc(),
+  watchGlobs({
+    globs: ['src/**/*.scss'],
+  }),
+  // postcss({
+  //   extract: true,
+  //   minimize: true,
+  //   sourceMap: true,
+  // }),
 ];
 
 /** @type {import('rollup').RollupOptions} */
 export default [
   ...output.map((output) => ({
-    input: "src/index.ts",
+    input: 'src/index.ts',
     external,
     output,
     plugins: [
-      peerDepsExternal(),
-      resolve(),
-      commonjs(),
       typescript({
-        tsconfig: "./tsconfig.json",
-        outDir: output.dir,
+        tsconfig: './tsconfig.json',
+        outDir: `${output.dir}/types`,
         declarationDir: `${output.dir}/types`,
         sourceMap: false,
       }),
-      // postcss({
-      //   extensions: [".css", ".scss"],
-      //   inject: true,
-      //   modules: true,
-      //   namedExports: true,
-      //   use: ["sass"],
-      // }),
-      swc(),
       copy({
         targets: [
-          {
-            src: "src/**/*.scss",
-            dest: output.dir,
-          },
+          { src: 'src/**/*.scss', dest: output.dir },
+          { src: 'src/themes/**/*.scss', dest: `dist` },
         ],
         flatten: false,
-        hook: "writeBundle",
-      })
-    ],
-  })),
-  {
-    input: "dist/esm/types/index.d.ts",
-    output: { file: "dist/index.d.ts", format: "esm" },
-    plugins: [
-      dts(),
+        hook: 'writeBundle',
+      }),
       {
-        name: "cleanup-dts-files",
-        generateBundle() {
-          const files = fg.sync(["dist/{cjs,esm}/**/*.d.ts"]);
-          console.info(colors.green("Cleaning up d.ts files"));
-          files.forEach((file) => fs.removeSync(file));
+        name: 'cleanup-types-from-cjs-and-move-types-from-esm-to-root',
+        writeBundle() {
+          const files = fg.sync([`${output.dir}/**/*.d.ts{,.map}`]);
 
-          const dirs = fg.sync(["dist/{cjs,esm}"], { onlyDirectories: true });
-          console.info(colors.green("Cleaning up types directory"));
-          dirs.forEach((dir) => fs.removeSync(`${dir}/types`));
+          // If files are in cjs, remove them
+          if (output.format === 'cjs') {
+            files.forEach((file) => {
+              fs.removeSync(file);
+            });
+          }
+
+          // if files are in esm, move them to root
+          if (output.format === 'esm') {
+            files.forEach((file) => {
+              const newFile = file.replace('dist/esm/', 'dist/');
+              fs.moveSync(file, newFile);
+            });
+          }
+
+          // Remove types directory
+          fs.removeSync(`${output.dir}/types`);
         },
       },
     ],
-  },
+  })),
 ];

@@ -4,7 +4,15 @@
   "description": "Auto generated react library",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/types/index.d.ts",
+  "style": "dist/style/index.css",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./themes/*": "./dist/themes/*"
+  },
   "scripts": {
     "dev": "rollup -c -w",
     "build": "rm -rf dist && rollup -c",
