@@ -1,13 +1,13 @@
-import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
-import peerDepsExternal from 'rollup-plugin-peer-deps-external';
 import swc from '@rollup/plugin-swc';
-import pkg from './package.json' assert { type: 'json' };
-import watchGlobs from 'rollup-plugin-watch-globs';
-import copy from 'rollup-plugin-copy';
+import typescript from '@rollup/plugin-typescript';
 import fg from 'fast-glob';
 import fs from 'fs-extra';
+import copy from 'rollup-plugin-copy';
+import peerDepsExternal from 'rollup-plugin-peer-deps-external';
+import watchGlobs from 'rollup-plugin-watch-globs';
+import pkg from './package.json' assert { type: 'json' };
 
 const output = [
   {
@@ -77,7 +77,7 @@ export default [
           if (output.format === 'esm') {
             files.forEach((file) => {
               const newFile = file.replace('dist/esm/', 'dist/');
-              fs.moveSync(file, newFile);
+              fs.moveSync(file, newFile, { overwrite: true });
             });
           }
 
