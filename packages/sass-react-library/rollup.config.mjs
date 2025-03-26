@@ -38,11 +38,6 @@ const plugins = [
   watchGlobs({
     globs: ['src/**/*.scss'],
   }),
-  // postcss({
-  //   extract: true,
-  //   minimize: true,
-  //   sourceMap: true,
-  // }),
 ];
 
 /** @type {import('rollup').RollupOptions} */
