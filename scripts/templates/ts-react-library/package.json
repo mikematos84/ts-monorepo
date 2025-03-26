@@ -4,7 +4,15 @@
   "description": "Auto generated react library",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/types/index.d.ts",
+  "style": "dist/style/index.css",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./themes/*": "./dist/themes/*"
+  },
   "scripts": {
     "dev": "rollup -c -w",
     "build": "rm -rf dist && rollup -c",
@@ -80,8 +88,8 @@
     "mini-css-extract-plugin": "^2.9.2",
     "rollup": "^4.34.7",
     "rollup-plugin-copy": "^3.5.0",
-    "rollup-plugin-dts": "^6.1.1",
     "rollup-plugin-peer-deps-external": "^2.2.4",
+    "rollup-plugin-watch-globs": "2.0.1",
     "rollup-plugin-postcss": "^4.0.2",
     "sass": "^1.86.0",
     "sass-loader": "^16.0.5",

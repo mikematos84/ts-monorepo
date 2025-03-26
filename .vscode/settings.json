@@ -1,0 +1,28 @@
+{
+  // Readability
+  "editor.fontSize": 16,
+  "terminal.integrated.fontSize": 16,
+  "editor.wordWrap": "on",
+
+  // Formatting
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file",
+
+  // Code Actions
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.fixAll.sortJSON": "explicit",
+    "source.sortImports": "always"
+    // "source.removeUnusedImports": "explicit",
+  },
+
+  // Javascript
+  "javascript.updateImportsOnFileMove.enabled": "always",
+
+  // Typescript
+  "typescript.updateImportsOnFileMove.enabled": "always",
+
+  // Markdown
+  "markdown.updateLinksOnFileMove.enabled": "always"
+}
