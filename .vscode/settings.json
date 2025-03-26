@@ -12,8 +12,9 @@
   // Code Actions
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit",
-    "source.removeUnusedImports": "explicit",
-    "source.fixAll.sortJSON": "explicit"
+    "source.fixAll.sortJSON": "explicit",
+    "source.sortImports": "always"
+    // "source.removeUnusedImports": "explicit",
   },
 
   // Javascript

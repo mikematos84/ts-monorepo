@@ -1,24 +1,25 @@
-import { ReactNode } from "react";
-import classNames from "classnames";
-import styles from "./Button.module.scss";
+import classNames from 'classnames';
+import { ReactNode } from 'react';
+import styles from './Button.module.scss';
 
 export type ButtonProps = {
   children?: ReactNode;
-  status?: "info" | "success" | "danger" | "warning";
+  status?: 'info' | 'success' | 'danger' | 'warning';
   className?: string;
 };
 
-const Button = ({ children, status = "info", className }: ButtonProps) => {
+const Button = ({ children, status = 'info', className }: ButtonProps) => {
   return (
     <button
       type="button"
       className={classNames(
         // Load the default button styles
-        "button",
+        'button',
+        `button--${status}`,
         // Load the module override styles
         styles[`button--${status}`],
         // Load any style presets passed in
-        className
+        className,
       )}
     >
       {children && children}
