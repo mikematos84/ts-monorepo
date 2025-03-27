@@ -92,7 +92,6 @@
     "rollup": "^4.34.7",
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-peer-deps-external": "^2.2.4",
-    "rollup-plugin-watch-globs": "^2.0.1",
     "sass": "^1.86.0",
     "sass-loader": "^16.0.5",
     "storybook": "^8.5.6",
