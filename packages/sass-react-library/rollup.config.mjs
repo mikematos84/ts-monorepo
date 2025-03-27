@@ -65,17 +65,21 @@ export default [
       }),
       {
         name: 'transform-tokens',
-        writeBundle() {
-          const filepaths = fg.sync(['src/themes/**/tokens.json']);
+        buildStart() {
+          const filepaths = fg.sync(['src/tokens/**/tokens.json']);
           filepaths.forEach((filepath) => {
             const transformer = TokenTransformer.From(filepath);
 
-            fs.ensureDirSync(path.dirname(filepath).replace('src', 'dist'));
+            fs.ensureDirSync(path.dirname(filepath).replace('tokens', 'themes'));
 
-            const sass = transformer.toSassVariables({ scope: ':root' });
-            fs.writeFileSync(filepath.replace('src', 'dist').replace('tokens.json', '_tokens.scss'), sass, 'utf-8');
+            const sass = transformer.toSassVariables();
+            fs.writeFileSync(
+              filepath.replace('tokens', 'themes').replace('tokens.json', '_tokens.scss'),
+              sass,
+              'utf-8',
+            );
             const css = transformer.toCssVariables({ scope: ':root' });
-            fs.writeFileSync(filepath.replace('src', 'dist').replace('tokens.json', '_tokens.scss'), css, 'utf-8');
+            fs.writeFileSync(filepath.replace('tokens', 'themes').replace('tokens.json', '_tokens.scss'), css, 'utf-8');
           });
         },
       },

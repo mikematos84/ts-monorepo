@@ -55,13 +55,13 @@ class TokenTransformer {
     }
   }
 
-  toCssVariables({ scope } = {}) {
+  toCssVariables({ scope = ':root' } = {}) {
     if (this.#vars.length > 0) this.#vars = [];
     this.#tokens = this.#replaceReferences(this.#tokens);
     this.#recurseTokens(this.#tokens, '--');
     let content = this.#vars
       .map(([key, value]) => {
-        return `${scope && '\t'}${key}: ${value};`;
+        return `${scope ? '\t' : ''}${key}: ${value};`;
       })
       .join('\n');
     return scope ? `${scope} {\n${content}\n}` : content;
@@ -73,7 +73,7 @@ class TokenTransformer {
     this.#recurseTokens(this.#tokens, '$');
     let content = this.#vars
       .map(([key, value]) => {
-        return `${scope && '\t'}${key}: ${value};`;
+        return `${scope ? '\t' : ''}${key}: ${value};`;
       })
       .join('\n');
     return scope ? `${scope} {\n${content}\n}` : content;
