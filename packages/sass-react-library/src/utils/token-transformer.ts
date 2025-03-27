@@ -86,9 +86,7 @@ class TokenTransformer {
   }
 }
 
-export default TokenTransformer;
-
-async function main() {
+export async function generateThemes() {
   const filepaths = await fg.sync('src/tokens/**/tokens.json', { cwd: process.cwd() });
   for (const filepath of filepaths) {
     const transformer = TokenTransformer.From(filepath);
@@ -99,4 +97,8 @@ async function main() {
   }
 }
 
-main();
+export default TokenTransformer;
+
+if (require.main === module) {
+  generateThemes();
+}

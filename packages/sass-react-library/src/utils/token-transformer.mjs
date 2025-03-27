@@ -1,4 +1,4 @@
-import fs from 'fs';
+import fs from 'fs-extra';
 
 class TokenTransformer {
   #tokens = {};
@@ -10,7 +10,7 @@ class TokenTransformer {
     }
 
     if (typeof source === 'string') {
-      this.#tokens = JSON.parse(fs.readFileSync(source, 'utf-8') || {});
+      this.#tokens = fs.readJsonSync(source);
     }
   }
 

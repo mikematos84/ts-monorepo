@@ -32,15 +32,7 @@ const external = [
   'react/jsx-runtime',
 ];
 
-const plugins = [
-  peerDepsExternal(),
-  resolve(),
-  commonjs(),
-  swc(),
-  watchGlobs({
-    globs: ['src/**/*.scss'],
-  }),
-];
+const plugins = [peerDepsExternal(), resolve(), commonjs(), swc(), watchGlobs(['src/**/*.scss'])];
 
 /** @type {import('rollup').RollupOptions} */
 export default [
@@ -49,6 +41,7 @@ export default [
     external,
     output,
     plugins: [
+      ...plugins,
       typescript({
         tsconfig: './tsconfig.json',
         outDir: `${output.dir}/types`,
